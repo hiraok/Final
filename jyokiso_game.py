@@ -110,8 +110,6 @@ class Player():
         if self.y >= 190:
             self.y = 190
 
-
-
 class Wall():
     def __init__(self,x,y,w,h):
         self.wall_x = x
@@ -295,9 +293,6 @@ class App:
         self.Enemies.append(Enemy(165,30))
         self.Enemies.append(Enemy(165,80))
 
-
-
-        
         #wall make
         self.Walls1.append(Wall(8,8,136,8)) 
         self.Walls1.append(Wall(152,8,40,8))
@@ -381,9 +376,10 @@ class App:
 
         if self.player.dead:
             pyxel.blt(68,84,0,32,16,64,32,7)
+            pyxel.text(85,118,'Press R to Restart',0)
         elif self.player.clear:
             pyxel.blt(60,92,0,32,48,80,16,7)
-
+            pyxel.text(85,110,'Press R to Restart',0)
 
 
 

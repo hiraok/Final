@@ -279,7 +279,7 @@ class App:
         self.Walls2 = []
         self.Walls3 = []
 
-        pyxel.load('img.pyxres')
+        pyxel.load('final.pyxres')
 
 
 

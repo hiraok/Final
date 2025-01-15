@@ -5,11 +5,18 @@ import random
 class Player():
     def __init__(self):
         self.x=100
-        self.y=240
+        self.y=185
         self.dead = False
         self.clear = False
         self.angle_to_enemy = None
+        self.player_points = [(self.x,self.y),(self.x + 12,self.y),(self.x,self.y + 12),(self.x + 12,self.y + 12)]
+        self.player_edges = [(self.x,self.y,self.x + 12,self.y),(self.x + 12,self.y,self.x + 12,self.y + 12),(self.x + 12,self.y + 12,self.x ,self.y + 12),(self.x ,self.y + 12,self.x,self.y)]
+
+
     def movement(self):
+        self.player_points = [(self.x,self.y),(self.x + 12,self.y),(self.x,self.y + 12),(self.x + 12,self.y + 12)]
+        self.player_edges = [(self.x,self.y,self.x + 12,self.y),(self.x + 12,self.y,self.x + 12,self.y + 12),(self.x + 12,self.y + 12,self.x ,self.y + 12),(self.x ,self.y + 12,self.x,self.y)]
+
         if pyxel.btn(pyxel.KEY_LEFT):
             self.x -=1.5
         if pyxel.btn(pyxel.KEY_RIGHT):
@@ -19,15 +26,69 @@ class Player():
         if pyxel.btn(pyxel.KEY_DOWN):
             self.y +=1.5
 
+
+    def cp(self,x0, y0, x1, y1, x2, y2):
+            return (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+
+    def line_intersect(self,ax, ay, bx, by, cx, cy, dx, dy):
+        s = (self.cp(ax, ay, bx, by, cx, cy) * self.cp(ax, ay, bx, by, dx, dy))
+        t = (self.cp(cx,cy,dx,dy,ax,ay)) *  self.cp(cx,cy,dx,dy,bx,by) 
+        if s< 0  and t<0:
+            return True  
+        return False
+    
+
+        
+    def goal_check(self, goal):
+        
+        #square in diamond
+        for px, py in self.player_points:
+            if abs(px - goal.x + 5) + abs(py - goal.y + 5) <= 5:
+                self.clear = True
+                return
+        
+
+        #diamond in square
+        for px, py in [(goal.x + 5 - 5, goal.y + 5), (goal.x + 5 + 5, goal.y + 5), (goal.x + 5, goal.y + 5 - 5), (goal.x + 5, goal.y + 5 + 5)]:
+            if self.x <= px <= self.x + 12 and self.y <= py <= self.y + 12:
+                self.clear = True
+                return
+
+        #line intersect
+        self.goal_edges =[(goal.x,goal.y+5,goal.x+5,goal.y+10),(goal.x+5,goal.y+10,goal.x+10,goal.y+5),(goal.x+10,goal.y+5,goal.x+5,goal.y),(goal.x+5,goal.y,goal.x,goal.y+5)]
+        for rx1, ry1, rx2, ry2 in self.player_edges:
+            for dx1, dy1, dx2, dy2 in self.goal_edges:
+                if self.line_intersect(rx1, ry1, rx2, ry2, dx1, dy1, dx2, dy2):
+                    self.clear = True
+                    return
+
+
     def enemy_hit(self,enemy):
         self.distance = math.sqrt((abs(self.x - enemy.enemy_x))**2 + (abs(self.y - enemy.enemy_y))**2)
-        self.angle_to_enemy = math.atan2(enemy.enemy_y - self.y,self.x - enemy.enemy_x)
-        if self.angle_to_enemy < 0:
-            self.angle_to_enemy = math.pi*2 + self.angle_to_enemy
 
-        if self.distance <= enemy.view_radius and self.angle_to_enemy > enemy.tmp_angle - enemy.view_width_half and self.angle_to_enemy< enemy.tmp_angle + enemy.view_width_half:
+        self.view_points = [(enemy.enemy_x,enemy.enemy_y),(enemy.enemy_x + enemy.start_point_x, enemy.enemy_y - enemy.start_point_y),(enemy.enemy_x + enemy.end_point_x, enemy.enemy_y - enemy.end_point_y)]
+        self.view_edges = [
+            (enemy.enemy_x,enemy.enemy_y,enemy.enemy_x + enemy.start_point_x, enemy.enemy_y - enemy.start_point_y),
+            (enemy.enemy_x + enemy.start_point_x, enemy.enemy_y - enemy.start_point_y,enemy.enemy_x + enemy.end_point_x, enemy.enemy_y - enemy.end_point_y),
+            (enemy.enemy_x + enemy.end_point_x, enemy.enemy_y - enemy.end_point_y,enemy.enemy_x,enemy.enemy_y)
+            ]
+        
+        if enemy.view_radius + 1 < self.distance:
+            return
+        
+        for rx1, ry1, rx2, ry2 in self.player_edges:
+            for dx1, dy1, dx2, dy2 in self.view_edges:
+                if self.line_intersect(rx1, ry1, rx2, ry2, dx1, dy1, dx2, dy2):
 
-            self.dead = True
+                    self.dead = True
+                    return
+                
+
+
+
+
+
+
 
     def wall_collision(self,wall):
         if wall.wall_x + wall.wall_width -5 <= self.x <= wall.wall_x + wall.wall_width                      and self.y >= wall.wall_y and self.y <= wall.wall_y + wall.wall_height:
@@ -205,15 +266,20 @@ class Goal():
         self.x = 166
         self.y = 30
 
+
 class App:
     def __init__(self):
+        pyxel.init(200, 200)
+        self.reset_game()
+        pyxel.run(self.update, self.draw)
+
+    def reset_game(self):
         self.player=Player()
         self.goal = Goal()
         self.Enemies = []
         self.Walls1 = []
         self.Walls2 = []
         self.Walls3 = []
-        pyxel.init(200, 200)
 
         pyxel.load('img.pyxres')
 
@@ -252,20 +318,13 @@ class App:
         self.Walls3.append(Wall(0,104,56,8))
         self.Walls3.append(Wall(48,152,152,8))
 
-
-
-
-
-
-
         self.Walls = self.Walls1 + self.Walls2 + self.Walls3
-
-        pyxel.run(self.update, self.draw)
-
+        
     def update(self):
 
         if self.player.clear or self.player.dead:
-            pass
+            if pyxel.btnp(pyxel.KEY_R):
+                self.reset_game()
         else:
             self.player.movement()
             if pyxel.frame_count > 30:
@@ -277,8 +336,6 @@ class App:
                     enemy.movement(tmp)
                     self.player.enemy_hit(enemy)
 
-
-    
             for wall in self.Walls:
                 tmp = self.player.wall_collision(wall)
                 if tmp:
@@ -290,6 +347,8 @@ class App:
                         self.player.x = wall.wall_x + wall.wall_width
                     if tmp == 'Right':
                         self.player.x = wall.wall_x - 10
+            
+            self.player.goal_check(self.goal)
             
             self.player.edge_stop()
             
@@ -305,23 +364,30 @@ class App:
     def draw(self):
         pyxel.bltm(0, 0, 1, 0, 0, 200, 200)
 
+
+
+        for a in self.Enemies:
+            pyxel.tri(a.enemy_x,a.enemy_y,
+                    a.enemy_x + a.start_point_x, a.enemy_y - a.start_point_y,
+                    a.enemy_x + a.end_point_x,   a.enemy_y - a.end_point_y, 8)
+            pyxel.blt(a.enemy_x-4,a.enemy_y-4,0,0,16,8,8,7)
+        pyxel.blt(self.goal.x,self.goal.y,0,0,1,10,9,0)
+
+
+        pyxel.blt(self.player.x ,self.player.y,0,16,16,12,12,7)            
+
+
+
+
         if self.player.dead:
-            pyxel.text(90,90,"GameOver",0)
-        if self.player.clear:
-            pyxel.text(90,90,"Clear",0)
-        else:
-            if (self.goal.x < self.player.x + 12 and  self.goal.x + 10 > self.player.x and self.goal.y < self.player.y + 12 and  self.goal.y + 9 > self.player.y):     
-                self.player.clear = True
+            pyxel.blt(68,84,0,32,16,64,32,7)
+        elif self.player.clear:
+            pyxel.blt(60,92,0,32,48,80,16,7)
 
-            for a in self.Enemies:
-                pyxel.tri(a.enemy_x,a.enemy_y,
-                        a.enemy_x + a.start_point_x, a.enemy_y - a.start_point_y,
-                        a.enemy_x + a.end_point_x,   a.enemy_y - a.end_point_y, 8)
-                pyxel.blt(a.enemy_x-4,a.enemy_y-4,0,0,16,8,8,7)
 
-            pyxel.blt(self.player.x ,self.player.y,0,16,16,12,12,7)            
 
-            pyxel.blt(self.goal.x,self.goal.y,0,0,1,10,9,0)
+
+
 
 App()
 
